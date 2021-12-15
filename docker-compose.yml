@@ -1,0 +1,66 @@
+version: '3'
+
+services:
+  serveur:
+    image: nginx
+    volumes:
+      - ./public_html:/public_html
+      - ./conf.d:/etc/nginx/conf.d
+      - /etc/localtime:/etc/localtime
+    ports:
+    - "8080:80"
+    networks:
+      - nginxphp
+
+
+  bdd_relationelle:
+    image: postgres
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: db_post
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: example
+    networks:
+        - nginxphp
+    
+  php:
+    build:
+      context: ./postgres_dockerfile
+      dockerfile: ./Dockerfile
+    image: php:7.1.11-fpm-alpine
+    # links:
+    #   - "bdd_nosql" 
+    volumes:
+        - ./public_html:/public_html
+    expose:
+        - 9000
+    networks:
+        - nginxphp
+
+  bdd_nosql:
+    build: mongodb_load_data/
+    restart: always
+    volumes:
+      - $PWD/mongo-data:/data/db
+      - $PWD/mongo-app:/var/www/html
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: fitness_db 
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    networks:
+      - nginxphp
+
+volumes:
+  nginx:
+  postgres:
+  mongo:
+    
+networks:
+  nginxphp: 
+    driver: bridge
